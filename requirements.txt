@@ -1,0 +1,16 @@
+pyarrow==16.0.0 # 16.1.0 segfaults
+datasets
+openai
+tiktoken
+anthropic
+tenacity
+boto3
+jedi
+unidiff
+python-dotenv
+git+https://github.com/castorini/pyserini.git
+chardet
+GitPython
+faiss-cpu
+torch
+mkl

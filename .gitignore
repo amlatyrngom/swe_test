@@ -1,0 +1,4 @@
+.env
+anserini-jar
+sanity-check
+**/venv
