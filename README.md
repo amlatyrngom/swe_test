@@ -1,6 +1,7 @@
 ## Setup
 ### Prereqs
 NOTE: There might be other things that were implictly present in my system.
+I think you have to install `conda` to test the generated patches of stuff.
 #### Ubuntu (untested for now)
 ```sh
 sudo apt update

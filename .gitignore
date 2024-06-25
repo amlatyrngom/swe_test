@@ -2,3 +2,5 @@
 anserini-jar
 sanity-check
 **/venv
+**/working_stage
+**/__pycache__

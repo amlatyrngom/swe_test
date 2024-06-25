@@ -14,3 +14,5 @@ GitPython
 faiss-cpu
 torch
 mkl
+altair
+ipywidgets

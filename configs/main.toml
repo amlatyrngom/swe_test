@@ -1,0 +1,83 @@
+working_stage="./working_stage"
+llm_type="claude3"
+injections="configs/injections.toml"
+max_llm_attempts=1
+
+# Instructions for formatting the output
+[direct]
+code_task_instructions="""
+Fix the github issue by modifying the code in the files provided. I have given the exact lines that may need to be changed.
+VERY IMPORTANT: ONLY change the lines I have given you. DO NOT try to change any other lines.
+"""
+
+code_output_instructions="""
+Your output should be formatted as follows. Have as many blocks as you need to fix the issue.
+
+<mdblock>
+```md
+# Overall explanation of the changes you made
+```
+</mdblock>
+<mdblockN>
+```md
+# Reasoning for Nth specific change you made
+```
+</mdblockN>
+<patchN>
+```diff
+# Patch for Nth specific change you made
+```
+</patchN>
+
+A patch should follow the unified diff format. For example, to change line 5 from "old code" to "new code" in `file.py`, you would write:
+```diff
+--- a/file.py
++++ b/file.py
+@@ -5,1 +5,1 @@
+-old code
++new code
+```
+"""
+
+test_task_instructions="""
+From the test cases, tell me what specific changes need to happen to the code. Be as specific as possible.
+Format your output as follows:
+<mdblock>
+```md
+# Explanation of the what the test cases are checking.
+# Overall explanation of the changes I need to make to the code.
+```
+</mdblock>
+<mdblockN>
+```md
+# Reasoning for Nth specific change to make.
+```
+</mdblockN>
+
+For example, if you are fixing two issues, your output should look like this:
+<mdblock>
+```md
+# Explanation of the what the test cases are checking.
+# Overall explanation of the changes I need to make to the code.
+```
+</mdblock>
+<mdblock1>
+```md
+# Reasoning for 1st specific change to make.
+```
+</mdblock1>
+<mdblock2>
+```md
+# Reasoning for 2nd specific change to make.
+```
+</mdblock2>
+
+Pay close attention to the test cases and make your reasons as specific as possible.
+When they expect specific output/error strings, ALWAYS use the exact strings provided in your reasonings.
+When they check that a special case is handled, make sure to mention that in your reasonings.
+Etc. I want your reasonsings to be specific.
+"""
+
+test_output_instructions="""
+TODO: writeme.
+"""
