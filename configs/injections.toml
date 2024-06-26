@@ -1,0 +1,17 @@
+["marshmallow-code__marshmallow-1359"]
+enabled = true # Optional. True by default.
+content = """
+You should take the options from the root schema.
+"""
+
+["pylint-dev__astroid-1866"]
+enabled = true
+content = """
+You should catch both `TypeError` and `ValueError`.
+"""
+
+["sqlfluff__sqlfluff-1733"]
+enabled = true
+content = """
+The code should not set prev_newline to False just for whitespace.
+"""

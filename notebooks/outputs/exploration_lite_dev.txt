@@ -1,0 +1,46 @@
+File Counts
+Percentage of 0: 0.0
+Percentage of 1: 100.0
+Percentage of 2: 0.0
+Percentage of 3: 0.0
+Percentage of 4: 0.0
+Percentage of 5: 0.0
+Percentage of 6: 0.0
+Percentage of 7: 0.0
+Percentage of 8: 0.0
+Percentage of 9: 0.0
+Percentage of 10: 0.0
+Cumulative (<= 10): 100.0
+Import Counts
+Percentage of 0: 86.95652173913044
+Percentage of 1: 4.3478260869565215
+Percentage of 2: 4.3478260869565215
+Percentage of 3: 4.3478260869565215
+Percentage of 4: 0.0
+Percentage of 5: 0.0
+Cumulative (<= 5): 99.99999999999999
+Edit Counts
+Percentage of 0: 0.0
+Percentage of 1: 52.17391304347826
+Percentage of 2: 34.78260869565217
+Percentage of 3: 13.043478260869565
+Percentage of 4: 0.0
+Percentage of 5: 0.0
+Percentage of 6: 0.0
+Percentage of 7: 0.0
+Percentage of 8: 0.0
+Percentage of 9: 0.0
+Percentage of 10: 0.0
+Cumulative (<= 10): 100.0
+Line Counts
+Cumulative so far (<= 10): 52.17391304347826
+Cumulative so far (<= 20): 73.91304347826085
+Cumulative so far (<= 30): 95.65217391304344
+Cumulative so far (<= 40): 99.99999999999996
+Cumulative so far (<= 50): 99.99999999999996
+Cumulative so far (<= 60): 99.99999999999996
+Cumulative so far (<= 70): 99.99999999999996
+Cumulative so far (<= 80): 99.99999999999996
+Cumulative so far (<= 90): 99.99999999999996
+Cumulative so far (<= 100): 99.99999999999996
+
