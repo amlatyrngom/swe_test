@@ -1,13 +1,13 @@
 working_stage="./working_stage"
 llm_type="claude3"
 injections="configs/injections.toml"
-max_llm_attempts=1
+max_llm_attempts=3
 
 # Instructions for formatting the output
 [direct]
 code_task_instructions="""
 Fix the github issue by modifying the code in the files provided. I have given the exact lines that may need to be changed.
-VERY IMPORTANT: ONLY change the lines I have given you. DO NOT try to change any other lines.
+VERY IMPORTANT: ONLY change the lines I have given you. DO NOT try to change any other lines. Remember than line numbers are 1-indexed and inclusive.
 """
 
 code_output_instructions="""
@@ -37,6 +37,8 @@ A patch should follow the unified diff format. For example, to change line 5 fro
 -old code
 +new code
 ```
+
+Remember than line number are 1-indexed and inclusive.
 """
 
 test_task_instructions="""
@@ -81,3 +83,23 @@ Etc. I want your reasonsings to be specific.
 test_output_instructions="""
 TODO: writeme.
 """
+
+redo_task_instructions="""
+The previous fix you give me could not be applied. Most likely, you got the line numbers wrong. Please try again.
+Remember that line numbers are 1-indexed and inclusive.
+"""
+
+specific_instances = [
+    'sqlfluff__sqlfluff-1625',
+    'sqlfluff__sqlfluff-2419',
+    'sqlfluff__sqlfluff-1733',
+    'marshmallow-code__marshmallow-1359',
+    'pvlib__pvlib-python-1072',
+    'pvlib__pvlib-python-1154',
+    'pylint-dev__astroid-1196',
+    'pylint-dev__astroid-1866',
+    'pyvista__pyvista-4315',
+    'pydicom__pydicom-1694',
+    'pydicom__pydicom-1413',
+    'pydicom__pydicom-1256'
+]

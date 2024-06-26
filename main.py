@@ -133,6 +133,7 @@ def main(dataset, split, num_shards, shard_id, llm, force_retrieve, force_fix):
     pass
 
 if __name__ == "__main__":
+    # Some nonsense
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="princeton-nlp/SWE-bench_Lite")
     parser.add_argument("--split", type=str, default="dev")
@@ -144,4 +145,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(**vars(args))
     exit(0)
+    # Some nonsense
 
