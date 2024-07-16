@@ -1,0 +1,174 @@
+system_msg = """
+You are a files/directory selection tool that will help find the most likely relevant files/directories for a given issue.
+In general, only the main source files are relevant:
+  - They are likely either the `src` directory, the directory with a similar name as the project, or some other common sense directory.
+  - They are not configuration, documentation, test, example, or build directories/files unless the issue is very specifically about them.
+
+If the issue contains very specific information about the relevant files/directories, you should use this information.
+Be sure to read the instructions carefully and follow the format exactly.
+"""
+
+top_level_instructions = """
+Give me a list of directories that are relevant for fixing the issue.
+Format your response as follows:
+<reason>
+```md
+# Your reasoning here
+```
+</reason>
+
+<dirs>
+```json
+{
+    "relevant": [list of relevant directories]
+}
+```
+</dirs>
+
+
+For example, if only the `src` directory is relevant, you would write:
+<reason>
+```md
+# The issue is in the `src` directory because [...]
+```
+</reason>
+
+<dirs>
+```json
+{
+    "relevant": ["src"]
+}
+</dirs>
+
+If there are multiple relevant directories, give me all of them.
+Be sure to respect the block names (reason, dirs) and the JSON format.
+"""
+
+refinement_instructions = """
+Refine the candidate list of files to keep only the likely relevant files for the issue.
+Only filter out an item if you are certain it clearly irrelevant; be conservative.
+Otherwise, keep the item in the list; I'll refine it further myself.
+I've tentatively ranked the files in order of relevance (according to my own semantic search algorithm). Use the ranking to guide your decisions.
+
+Format your response as follows:
+<reason>
+```md
+# Your reasoning here
+```
+</reason>
+
+<files>
+```json
+{
+    "relevant": [list of relevant files]
+}
+```
+
+"""
+
+
+narrowing_system_msg = """
+You will help me narrow down the issue to identify the portions of a file that are most relevant for fixing an issue.
+There are two kinds of relevant information:
+- What to fix: The specific methods/functions to modify or add.
+- What to use: Things that are not modified, but are used to fix the issue.:
+    - Utility/Helper/Auxilliary functions or method to import and/or use.
+    - Custom Exceptions to import and/or raise.
+
+Anything else should be consided irrelevant and should not be included in the final output.
+Nothing is relevant if the file contains nothing to fix, and nothing to use.
+You will need to provide the specific information for each item to fix or provide context for.
+"""
+
+narrowing_instructions = """
+Help me narrow down the issue.
+I've given both the overall signatures in the file, as well as specific content that likely contains the issue.
+Using this information, give me the specific information as follows:
+- `reasoning`:
+    * Reasoning for this specific item.
+- `category`:
+    * Set to "fix" if the item is something that needs to be fixed.
+    * Set to "use" if the item is something that must be used.
+
+Also one of the following:
+- `fn_name` only:
+    * The function name if the item to modify or add is a top-level function.
+    * Set to null otherwise.
+- `class_name` and `method_name`:
+    * The class and method name if the item to modify or add is a method inside a class.
+    * Set to null otherwise.
+- `class_name` only:
+    * The class name when modifying a top-lvel class itself or adding a new top-level class (unlikely).
+    * Set to null otherwise.
+- `generic_lines`:
+    * [lo, hi] segment of the file to modify if none of above apply (unlikely). 
+    * Set to null otherwise.
+
+
+There may be multiple related items, though generally very few or even just one.
+Give me specific reasons and specific information for each item.
+
+Format your response as follows:
+<itemN>
+```json
+{
+    "reasoning": "Reasoning for the Nth item",
+    "category": "fix" or "use",
+    "class_name": "class name if applicable",
+    "method_name": "method name if applicable",
+    "fn_name": "function name if applicable",
+    "generic_lines": "lines pair if applicable"
+}
+```
+</itemN>
+
+N ranges from 0 to the number of things to fix/use.
+If a field is not applicable (e.g., "generic_lines" when fixing methods), you should set it to null.
+If there are no items to fix or use, you should not output anything.
+"""
+
+
+final_selection_system_msg = """
+You will help me make a final decision to identify how to an issue.
+There are two categories of relevant information:
+- What to fix: The specific methods/functions to modify or add.
+- What to use: Things that are not modified, but are used to fix the issue.:
+    - Utility/Helper/Auxilliary functions or method to import and/or use.
+    - Custom Exceptions to import and/or raise.
+
+I've narrowed down the search to a set of candidate items, ranked in order of quality according my own criteria.
+You will pick ONLY what NEEDS to be fixed or used.
+There will possibly be redundant/irrelevant items in the list; you MUST filter them out.
+"""
+
+
+final_selection_instructions = """
+Pick the final items that need to be fixed or used.
+I've given you a list of candidate items, ranked in order of quality.
+Give me back the index of the items that need to be fixed or used.
+
+Format your response as follows:
+<reason>
+```md
+# Your overall reasoning here.
+```
+</reason>
+
+<final>
+```json
+[
+    {
+        "reason": "Reasoning for the item N",
+        "category": "fix" or "use",
+        "index": N,
+    },
+    ...
+]
+</final>
+
+For example:
+- If I only to modify item 0, you would only return that item with a "fix" category.
+- If I modify items 1 and 3, using information in item 2, you would return items 1, 2, and 3 with the appropriate categories.
+
+Be sure to respect the block names (reason, final) and the JSON format.
+"""

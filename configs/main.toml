@@ -1,7 +1,15 @@
 working_stage="./working_stage"
-llm_type="claude3"
+dataset = "princeton-nlp/SWE-bench_Lite"
+split = "dev"
+llm="gpt-4o"
 injections="configs/injections.toml"
+verbose=true
 max_llm_attempts=3
+text_split_length=4096
+
+default_system_msg = """
+You are a programmer trying to fix Github issues. Be sure to format your responses correctly and to only include the necessary changes.
+"""
 
 # Instructions for formatting the output
 [direct]
@@ -89,17 +97,20 @@ The previous fix you give me could not be applied. Most likely, you got the line
 Remember that line numbers are 1-indexed and inclusive.
 """
 
+
 specific_instances = [
-    'sqlfluff__sqlfluff-1625',
-    'sqlfluff__sqlfluff-2419',
-    'sqlfluff__sqlfluff-1733',
-    'marshmallow-code__marshmallow-1359',
-    'pvlib__pvlib-python-1072',
-    'pvlib__pvlib-python-1154',
-    'pylint-dev__astroid-1196',
-    'pylint-dev__astroid-1866',
-    'pyvista__pyvista-4315',
-    'pydicom__pydicom-1694',
+    # 'sqlfluff__sqlfluff-1625',
+    # 'sqlfluff__sqlfluff-2419',
+    # 'sqlfluff__sqlfluff-1733',
+    # 'marshmallow-code__marshmallow-1359',
+    # 'pvlib__pvlib-python-1072',
+    # 'pvlib__pvlib-python-1154',
+    # 'pylint-dev__astroid-1196',
+    # 'pylint-dev__astroid-1866',
+    # 'pyvista__pyvista-4315',
+    # 'pydicom__pydicom-1694',
     'pydicom__pydicom-1413',
-    'pydicom__pydicom-1256'
+    # 'pydicom__pydicom-1256'
 ]
+
+

@@ -1,15 +1,15 @@
 import argparse
-from retrieval.gold import GoldenRetriever
-from fixer.direct import DirectFixer, PromptingStrategy
-from common import LLMType, call_llm
-from common.interfaces import RetrievedFile, FileDisplayLevel
+# from retrieval.gold import GoldenRetriever
+# from fixer.direct import DirectFixer, PromptingStrategy
+# from common import LLMType, call_llm
+# from common.interfaces import RetrievedFile, FileDisplayLevel
+from fixer.module import make_code_index
+from common.handles import TEXT_SEARCH
 import datasets
 import tomllib
 import os
-import dotenv
-import openai
-import boto3
-from enum import Enum
+import json
+from collections import OrderedDict
 
 
 
@@ -19,109 +19,127 @@ def get_item_by_id(dataset: datasets.Dataset, item_id: str):
             return item
     raise ValueError(f"Item with id {item_id} not found in dataset.")    
 
-def get_simple_items(retriever: GoldenRetriever, llm_type: LLMType, max_num_edits=1):
-    stats = retriever.collect_stats()
-    items = {}
-    working_stage = retriever.config["working_stage"]
-    # Delete all files of the form essai-*.prompt
-    for file in os.listdir(retriever.config["working_stage"]):
-        if file.startswith("essai-prompt-") and file.endswith(".prompt"):
-            os.remove(f"{working_stage}/{file}")
-    for item in retriever.dataset:
-        num_files = stats["num_files"][item["instance_id"]]
-        num_edits = stats["num_edits"][item["instance_id"]]
-        print(f"Num files: {num_files}, Num edits: {num_edits}")
-        if num_files > 1 or num_edits > max_num_edits:
-            continue
-        retrieved = retriever.retrieved[item["instance_id"]]
-        prompt = make_basic_prompt(retriever, item, retrieved)
-        prompt_file = f"{working_stage}/essai-prompt-{item['instance_id']}.prompt"
-        with open(prompt_file, "w") as f:
-            f.write(prompt)
-        items[item["instance_id"]] = (item, retrieved)
-        resp = run_and_parse(prompt, llm_type)
-        print(resp)
-        exit(0)
-    return items
 
-def make_basic_prompt(retriever: GoldenRetriever, item, retrieved):
-    repo = item["repo"]
-    issue = item["problem_statement"]
-    retrieved_context = retrieved[0].format_for_prompt(FileDisplayLevel.FILE_AND_LINES)
-    output_instructions = retriever.config["output_instructions"]
-    instructions = f"""
----
-Repository: {repo}
----
-Here is the issue:
-Start of issue:
-{issue}
-End of issue.
----
-{retrieved_context}
----
-Your task: Fix the github issue by modifying the code in the files provided. I have given the exact lines that may need to be changed. DO NOT try to change any other lines.
-
-{output_instructions}
-"""
-    return instructions
+def make_dataset_index(force: bool = False):
+    """Build the code search index for a dataset."""
+    import datasets
+    import threading
+    from itertools import chain
+    config = tomllib.load(open("configs/main.toml", "rb"))
+    dataset_name = config["dataset"]
+    split = config["split"]
+    check_cache = not force
+    dataset = datasets.load_dataset(dataset_name, split=split)
+    parallelism = 8
+    threads = []
+    items = list(dataset)
+    def make_chunks(items):
+        by_repo = {}
+        for item in items:
+            repo = item["repo"]
+            if repo not in by_repo:
+                by_repo[repo] = []
+            by_repo[repo].append(item)
+        chunk_size = len(by_repo) // parallelism
+        n = max(1, chunk_size)
+        by_repo = list(by_repo.values())
+        return [by_repo[i:i+n] for i in range(0, len(by_repo), n)]
+    chunks = make_chunks(items)
+    chunks = [chunk for chunk in chunks if len(chunk) > 0]
+    def _build_dataset_index(items, check_cache, thread_idx):
+        items = list(chain(*items))
+        for item in items:
+            make_code_index(item, check_cache=check_cache)
+    for i, chunk in enumerate(chunks):
+        thread = threading.Thread(target=_build_dataset_index, args=(chunk, check_cache, i))
+        thread.start()
+        threads.append(thread)
+    for thread in threads:
+        thread.join()
 
 
-def parse_block(output: str, tag: str):
-    """Parse code between <tag attrs> and </tag>"""
-    start_tag = f"<{tag}"
-    end_tag = f"</{tag}>"
-    start = output.find(start_tag)
-    if start == -1:
-        return None
-    # Parse attributes: attr1=value1 attr2=value2
-    attrs_start = start + len(start_tag)
-    attrs_end = output.find(">", attrs_start)
-    attrs = output[attrs_start:attrs_end]
-    attrs = attrs.split(" ")
-    attrs = {a.split("=")[0]: a.split("=")[1] for a in attrs if "=" in a}
-    # Parse content
-    start_block = attrs_end + 1
-    end_block = output.find(end_tag, start_block)
-    return output[start_block:end_block], attrs
+def main_try_code_search(instance_id: str, force: bool = False, query = None, exact = False):
+    """Try to use a code search object."""
+    config = tomllib.load(open("configs/main.toml", "rb"))
+    dataset_name = config["dataset"]
+    split = config["split"]
+    dataset = datasets.load_dataset(dataset_name, split=split)
+    item = get_item_by_id(dataset, instance_id)
+    check_cache = not force
+    code_index = make_code_index(item, check_cache=check_cache)
+    dirs = ["astroid"]
+    print(f"Relevant Dirs: {dirs}")
+    # print(f"Relevant Dirs: {dirs}")
+    if query is None:
+        query = item["problem_statement"]
+    if exact:
+        results = TEXT_SEARCH.exact_search(instance_id, query=query, num_results=3, elem_type="code", in_dirs=dirs)
+    else:
+        results = TEXT_SEARCH.approximate_search(instance_id, query=query, num_results=3, elem_type="code", in_dirs=dirs, cache_key=f"try-code-search-{instance_id}")
+    show_items = ['filename', 'parent_name', 'elem_name', 'elem_type', 'split_idx', 'distance']
+    print(f"Results: {[{k: v for k, v in result.items() if k in show_items} for result in results]}")
+    # candidates = OrderedDict([(result['filename'], ()) for result in results])
+    # candidate_ranks = [(filename, i) for i, filename in enumerate(candidates.keys())]
+    # good_candidates = dir_selection.refine_files(item, code_search, candidate_ranks)
+    # print(f"Results: {[{k: v for k, v in result.items() if k in show_items} for result in results]}")
+    # refined_results = [result for result in results if result['filename'] in good_candidates]
+    # print(f"Refined Results: {[{k: v for k, v in result.items() if k in show_items} for result in refined_results]}")
+    # full_contexts = OrderedDict()
+    # for search_result in refined_results:
+    #     contexts = dir_selection.narrow_down_result(item, code_search, search_result)
+    #     for context in contexts:
+    #         full_contexts[context['key']] = context
+    # full_contexts = list(full_contexts.values())
+    # dir_selection.make_final_selection(item, code_search, full_contexts)    
+
+    # print(json.dumps(results, indent=2))
+    print(TEXT_SEARCH.db_idx(instance_id))
+
+def aux_search(instance_id: str, force: bool = False):
+    from fixer.auxiliary_search import AuxiliarySearch
+    config = tomllib.load(open("configs/main.toml", "rb"))
+    dataset_name = config["dataset"]
+    split = config["split"]
+    dataset = datasets.load_dataset(dataset_name, split=split)
+    item = get_item_by_id(dataset, instance_id)
+    check_cache = not force
+    code_index = make_code_index(item, check_cache=check_cache)
+    aux_search = AuxiliarySearch()
+    additional_context = ""# item["hints_text"].strip()
+    if len(additional_context) > 0:
+        additional_context = f"""Here is additional context from a conversation that may be helpful:\n{additional_context}"""
+    aux_search.perform_aux_search(item, code_index, additional_context=additional_context)
+    print(item['patch'])
 
 
-def run_and_parse(prompt: str, llm_type: LLMType):
-    # Call LLM
-    try:
-        response = call_llm(prompt, llm_type)
-        print(f"LLM Response:\n{response}")
-    except Exception as e:
-        print(e)
-        exit(0)
-    overall_explanation = parse_block(response, "mdblock")
-    explanations = []
-    codeblocks = []
-    attrs = []
-    i = 1
-    while True:
-        try:
-            explanation, _ = parse_block(response, f"mdblock{i}")
-            codeblock, block_attrs = parse_block(response, f"codeblock{i}")
-            print(explanation)
-            print(codeblock)
-            print(block_attrs)
-            explanations.append(explanation)
-            codeblocks.append(codeblock)
-            attrs.append(block_attrs)
-            i += 1
-        except:
-            break
-    return overall_explanation, explanations, codeblocks, attrs
+def public_search(instance_id: str):
+    from fixer.public_search import PublicSearch
+    config = tomllib.load(open("configs/main.toml", "rb"))
+    dataset_name = config["dataset"]
+    split = config["split"]
+    dataset = datasets.load_dataset(dataset_name, split=split)
+    item = get_item_by_id(dataset, instance_id)
+    public_search = PublicSearch()
+    additional_context = ""# item["hints_text"].strip()
+    if len(additional_context) > 0:
+        additional_context = f"""Here is additional context from a conversation that may be helpful:\n{additional_context}"""
+    public_search.perform_public_search(item, additional_context=additional_context)
 
 
-def main(dataset, split, num_shards, shard_id, llm, force_retrieve, force_fix):
-    llm_type = LLMType.from_string(llm)
-    use_retriever_cache = not force_retrieve
-    use_fixer_cache = not force_fix
-    retriever = GoldenRetriever(dataset_name=dataset, split=split, num_shards=num_shards, shard_id=shard_id, load_cache=use_retriever_cache)
-    fixer = DirectFixer(retriever=retriever, verbose=True, prompting_strategy=PromptingStrategy.ONE_SHOT_CODE_ONLY, load_cache=use_fixer_cache)
-    fixer.serialize_all()
+def basic_fix(instance_id: str, force: bool = False):
+    from fixer.direct import DirectFixer
+    check_cache = not force
+    fixer = DirectFixer(specific_instance_ids=[instance_id], check_cache=check_cache)
+    fixer.make_fixes()
+
+
+# def main(dataset, split, num_shards, shard_id, llm, force_retrieve, force_fix):
+    # llm_type = LLMType.from_string(llm)
+    # use_retriever_cache = not force_retrieve
+    # use_fixer_cache = not force_fix
+    # retriever = GoldenRetriever(dataset_name=dataset, split=split, num_shards=num_shards, shard_id=shard_id, load_cache=use_retriever_cache)
+    # fixer = DirectFixer(retriever=retriever, verbose=True, prompting_strategy=PromptingStrategy.ONE_SHOT_WITH_TESTS, load_cache=use_fixer_cache)
+    # fixer.serialize_all()
     # simple_items = get_simple_items(retriever=retriever, llm_type=llm_type, max_num_edits=1)
     # sample_id = "pvlib__pvlib-python-1854"
     # retrieved = retriever.retrieved[sample_id]
@@ -135,15 +153,36 @@ def main(dataset, split, num_shards, shard_id, llm, force_retrieve, force_fix):
 if __name__ == "__main__":
     # Some nonsense
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="princeton-nlp/SWE-bench_Lite")
-    parser.add_argument("--split", type=str, default="dev")
-    parser.add_argument("--num_shards", type=int, default=None)
-    parser.add_argument("--shard_id", type=int, default=None)
-    parser.add_argument("--llm", type=str, default="claude3")
-    parser.add_argument("--force_retrieve", action="store_true", default=False)
-    parser.add_argument("--force_fix", action="store_true", default=False)
+    subparsers = parser.add_subparsers(help="Sub-commands")
+    # Build indices
+    build_indices_parser = subparsers.add_parser("build-code-index")
+    build_indices_parser.add_argument("--force", action="store_true", default=False)
+    build_indices_parser.set_defaults(func=make_dataset_index)
+    # Try code search
+    try_code_search_parser = subparsers.add_parser("try-code-search")
+    try_code_search_parser.add_argument("instance_id", type=str, default="sqlfluff__sqlfluff-1625")
+    try_code_search_parser.add_argument("--force", action="store_true", default=False)
+    try_code_search_parser.add_argument("--query", type=str, default=None)
+    try_code_search_parser.add_argument("--exact", action="store_true", default=False)
+    try_code_search_parser.set_defaults(func=main_try_code_search)
+    # Auxilliary search
+    aux_search_parser = subparsers.add_parser("aux-search")
+    aux_search_parser.add_argument("instance_id", type=str, default="sqlfluff__sqlfluff-1625")
+    aux_search_parser.add_argument("--force", action="store_true", default=False)
+    aux_search_parser.set_defaults(func=aux_search)
+    # Public search
+    public_search_parser = subparsers.add_parser("public-search")
+    public_search_parser.add_argument("instance_id", type=str, default="sqlfluff__sqlfluff-1625")
+    public_search_parser.set_defaults(func=public_search)
+    # Basic fix
+    basic_fix_parser = subparsers.add_parser("basic-fix")
+    basic_fix_parser.add_argument("instance_id", type=str, default="sqlfluff__sqlfluff-1625")
+    basic_fix_parser.add_argument("--force", action="store_true", default=False)
+    basic_fix_parser.set_defaults(func=basic_fix)
+    # Execute
     args = parser.parse_args()
-    main(**vars(args))
-    exit(0)
+    func = args.func
+    del args.func
+    func(**vars(args))
     # Some nonsense
 

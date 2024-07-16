@@ -1,0 +1,98 @@
+tool_prompt_instructions="""
+Identify which of the following tools I need to fix the issue. You can select multiple tools if needed, or use the same tool multiple times.
+Your output should be formatted as follows:
+<mdblock>
+```md
+# Overall reasoning for the tools to use.
+```
+</mdblock>
+
+<mdblockN>
+```md
+# Reasoning for the Nth tool to use.
+```
+</mdblockN>
+<toolblockN>
+```json
+{
+    "name": "[Name of the Nth tool to use]",
+    "input": "[Input to the Nth tool. Make sure it is correctly formatted]"
+}
+```
+</toolblockN>
+
+You MUST use the tag names above (mdblock, toolblock) before outputting the content.
+I have given you a list of tools available with name, description and input format.
+Be sure to precisely follow the input format for each tool.
+For example, when selecting a search tool, you must provide the search query as a string.
+When selecting the noop tool, you must provide an empty string.
+Only pick the noop tool if no tool is needed.
+"""
+
+
+# public_search_prompt_instructions="""
+# Your task: *Comprehensively* aggregate information from the internet search results for "{input_value}".
+# Be sure to comprehensively keep ALL the relevant information.
+# For example, if the pages contain relevant tables or list, be sure to include ALL items/specific info in the aggregated result.
+
+# Your output should be formatted as follows.
+# You only need list blocks if the search results contains tables/lists of items. Otherwise, you can just use mdblocks.
+
+# <mdblock>
+# ```md
+# # Overall aggregation of the search results.
+# ```
+# </mdblock>
+
+# <mdblockN>
+# ```md
+# # What the Nth potential list is about.
+# ```
+# </mdblockN>
+
+# <listblockN>
+# ```json
+# # JSON array of the items in the Nth list.
+# # For example:
+# [
+#     {
+#          "name": <...>,
+#          "description": <...>
+#     },
+#     {
+#          "name": <...>,
+#          "description": <...>
+#     },
+#     ...
+# ]
+# ```
+# </listblockN>
+# """
+
+public_search_confirmation_instructions="""
+Please confirm that I have aggregated all the relevant information from the search results.
+I want to be certain that the list is comprehensive.
+Format your output as follows:
+
+<mdblock>
+```md
+# Confirm that all the relevant information has been aggregated.
+```
+</mdblock>
+
+If there is any missing information, please provide it in the following format:
+<listblock>
+```json
+# JSON array of the missing items.
+```
+</listblock>
+"""
+
+
+[[injections]]
+description = "Search for DICOM format information."
+match = ".*dicom.*"
+content = """
+When handling pydicom types, I need the whole list of VRs to fix the code. Search for the pydicom documentation.
+"""
+

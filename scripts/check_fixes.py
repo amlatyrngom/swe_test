@@ -2,12 +2,13 @@ import os
 import argparse
 import json
 
+# Note: This order is important.
 phrases = {
     "success": ["All tests passed"],
+    "test_script_failure": ["Test script run failed"],
     "test_failure": ["Some tests failed"],
     "install_failure": ["Installation failed"],
     "patch_failure": ["Apply patch failed"],
-    "test_script_failure": ["Test script run failed"],
 }
 
 def main(eval_path):

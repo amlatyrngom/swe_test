@@ -1,0 +1,54 @@
+tool_description = """
+Search for public information on the internet. Use this when the issue/code contains specific information or wider context that I may need.
+"""
+
+input_format = """
+Give me the search term you want to look up as a string
+"""
+
+tool_system_message = """
+You are an information aggregator. Be sure to keep ALL the relevant information.
+"""
+
+per_result_limit = 50000
+num_results = 1
+
+prompt_instructions="""
+Your task: *Comprehensively* aggregate information from the internet search results for "{input_value}".
+Be sure to comprehensively keep ALL the relevant information.
+For example, if the pages contain relevant tables or list, be sure to include ALL items/specific info in the aggregated result.
+You should include items that are marked as deprecated, not appliable, not recommended, etc. Do not exclude any information.
+"""
+
+
+public_search_refine_instructions="""
+Your task: I've given you a list of search results for "{input_value}".
+I want you to select the most relevant one1.
+You should select the search results that contain the most comprehensive and up-to-date information.
+
+Prefer:
+- Up-to-date information to old information.
+- Official documentation to unofficial documentation.
+- Comprehensive information to partial.
+
+Your output should be formatted as follows:
+<mdblock>
+```md
+# Overall explanation of the search result you selected.
+```
+</mdblock>
+<listblock>
+```json
+# JSON of the selected search result.
+# For example:
+{
+    "title": <...>,
+    "url": <...>,
+    "description": <...>
+}
+```
+</listblock>
+
+
+You must use exactly the tags I have provided (mdblock, listblock). Do not change the tags or the format of the output.
+"""
